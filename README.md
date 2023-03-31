@@ -3,7 +3,7 @@
 ## Project Description
 **This project is a summary of this back-end trimester: authentication, NodeJS, MongoDB, Redis, pagination and background processing.**
 
-## Technologies/Tools
+## Technologies
 - Back-end
 - JavaScript
 - ES6
@@ -14,7 +14,8 @@
 - ExpressJS
 - Kue
 
-## The objective is to build a simple platform to upload and view files:
+## Project Objetives
+The objectives is to build a simple platform to upload and view files:
 
 - User authentication via a token
 - List all files
