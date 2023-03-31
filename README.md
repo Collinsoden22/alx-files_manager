@@ -1,4 +1,18 @@
+# File Manager
+
+## Project Description
 **This project is a summary of this back-end trimester: authentication, NodeJS, MongoDB, Redis, pagination and background processing.**
+
+## Technologies/Tools
+- Back-end
+- JavaScript
+- ES6
+- NoSQL
+- MongoDB
+- Redis
+- NodeJS
+- ExpressJS
+- Kue
 
 ## The objective is to build a simple platform to upload and view files:
 
