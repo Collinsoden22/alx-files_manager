@@ -1,4 +1,5 @@
 main.js
 package-lock.json
 *~
-test/*node_modules/
+test/*
+node_modules/*
