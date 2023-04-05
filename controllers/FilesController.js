@@ -1,62 +1,64 @@
+const fs = require('fs');
+const path = require('path');
 const { v4: uuidv4 } = require('uuid');
-const { getFileType } = require('../utils/fileUtils');
-const { ObjectId } = require('mongodb');
+const File = require('../models/File');
 
-const FilesController = {};
+const FOLDER_PATH = process.env.FOLDER_PATH || '/tmp/files_manager';
 
-FilesController.postNew = async (req, res) => {
-    const { name, type, parentId = '0', isPublic = false, data } = req.body;
-    const userId = ObjectId(req.user.id);
-    const parent = await req.app.locals.db
-        .collection('files')
-        .findOne({ _id: ObjectId(parentId), type: 'folder' });
+const createFile = async (req, res) => {
+    const { name, type, parentId = 0, isPublic = false, data } = req.body;
+    const userId = req.user.id;
 
     if (!name) {
-        return res.status(400).json({ error: 'Missing name' });
+        return res.status(400).json({ message: 'Missing name' });
     }
 
-    if (!type || !getFileType(type)) {
-        return res.status(400).json({ error: 'Missing or invalid type' });
+    if (!type || !['file', 'image', 'folder'].includes(type)) {
+        return res.status(400).json({ message: 'Missing or invalid type' });
     }
 
-    if (!data && type !== 'folder') {
-        return res.status(400).json({ error: 'Missing data' });
+    if (type !== 'folder' && !data) {
+        return res.status(400).json({ message: 'Missing data' });
     }
 
-    if (parentId !== '0' && (!parent || parent.userId.toString() !== userId.toString())) {
-        return res.status(400).json({ error: 'Invalid parent' });
+    if (parentId) {
+        const parent = await File.findById(parentId);
+        if (!parent) {
+            return res.status(400).json({ message: 'Parent not found' });
+        }
+        if (parent.type !== 'folder') {
+            return res.status(400).json({ message: 'Parent is not a folder' });
+        }
     }
 
-    const fileData = {
+    const file = new File({
         userId,
         name,
         type,
-        isPublic,
         parentId,
-    };
+        isPublic,
+    });
 
-    if (type === 'folder') {
-        const result = await req.app.locals.db.collection('files').insertOne(fileData);
-        const file = await req.app.locals.db.collection('files').findOne({ _id: result.insertedId });
-        return res.status(201).json({ id: file._id, name: file.name });
-    }
-
-    const folderPath = process.env.FOLDER_PATH || '/tmp/files_manager';
-    const filename = uuidv4();
-    const localPath = `${folderPath}/${filename}`;
+    if (type !== 'folder') {
+        const localPath = path.join(FOLDER_PATH, uuidv4());
     const fileContent = Buffer.from(data, 'base64');
+        try {
+            await fs.promises.mkdir(FOLDER_PATH, { recursive: true });
+            await fs.promises.writeFile(localPath, fileContent);
+            file.localPath = localPath;
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ message: 'Error while creating file' });
+        }
+    }
 
     try {
-        await req.app.locals.fs.promises.writeFile(localPath, fileContent);
-    } catch (err) {
-        console.error(`Error saving file to disk: ${err}`);
-        return res.status(500).json({ error: 'Error saving file to disk' });
+        const savedFile = await file.save();
+        res.status(201).json(savedFile);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error while saving file' });
     }
-
-    fileData.localPath = localPath;
-    const result = await req.app.locals.db.collection('files').insertOne(fileData);
-    const file = await req.app.locals.db.collection('files').findOne({ _id: result.insertedId });
-    return res.status(201).json({ id: file._id, name: file.name });
 };
 
-module.exports = FilesController;
+module.exports = { postUpload: createFile };
