@@ -16,9 +16,9 @@ class DBClient {
         });
     }
 
-    isAlive() {
-        return !!this.db;
-    }
+     isAlive() {
+        return this.client.isConnected();
+      }
 
     async nbUsers() {
         return this.db.collection('users').countDocuments();
